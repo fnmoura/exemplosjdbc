@@ -2,6 +2,7 @@ package br.com.javaparaweb.capitulo3.crudjdbc;
 
 import java.sql.Connection;
 import java.sql.Date;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -36,8 +37,58 @@ public class ContatoCrudJDBC {
 			}
 		}
 	}
-	public void atualizar(Contato contato) {}
-	public void excluir(Contato contato) {}
+	public void atualizar(Contato contato) {
+		Connection conexao = this.geraConexao();
+		PreparedStatement atualizaSt = null;
+		String sql = "update contato set (nome, telefone, email, dt_cad, obs) values (?, ?, ?, ?, ?) where nome = " + contato.getNome();
+		try {
+			atualizaSt = conexao.prepareStatement(sql);
+			atualizaSt.setString(1, contato.getNome());
+			atualizaSt.setString(2, contato.getTelefone());
+			atualizaSt.setString(3, contato.getEmail());
+			atualizaSt.setDate(4, contato.getDataCadastro());
+			atualizaSt.setString(5, contato.getObservacao());
+			atualizaSt.executeUpdate();
+		}
+		catch(SQLException e) {
+			System.out.println("Erro ao atualizar contato. Mensagem: " + e.getMessage());
+		}
+		finally {
+			try {
+				atualizaSt.close();
+				conexao.close();
+			}
+			catch (Throwable e) {
+				System.out.println("Erro ao fechar operações de atualização. Mensagem: " + e.getMessage());
+			}
+		}
+	}
+	public void excluir(Contato contato) {
+		Connection conexao = this.geraConexao();
+		PreparedStatement excluiSt = null;
+		String sql = "delete from contato where nome = " + contato.getNome();
+		try {
+			excluiSt = conexao.prepareStatement(sql);
+			excluiSt.setString(1, contato.getNome());
+			excluiSt.setString(2, contato.getTelefone());
+			excluiSt.setString(3, contato.getEmail());
+			excluiSt.setDate(4, contato.getDataCadastro());
+			excluiSt.setString(5, contato.getObservacao());
+			excluiSt.executeUpdate();
+		}
+		catch(SQLException e) {
+			System.out.println("Erro ao excluir contato. Mensagem: " + e.getMessage());
+		}
+		finally {
+			try {
+				excluiSt.close();
+				conexao.close();
+			}
+			catch (Throwable e) {
+				System.out.println("Erro ao fechar operações de exclusão. Mensagem: " + e.getMessage());
+			}
+		}
+	}
 	public List<Contato> listar(){
 		Connection conexao = this.geraConexao();
 		List<Contato> contatos = new ArrayList<Contato>();
@@ -75,11 +126,59 @@ public class ContatoCrudJDBC {
 		return contatos;
 		}
 	public Contato buscaContato(int valor) {
-		return null;}
+		Connection conexao = this.geraConexao();
+		PreparedStatement consulta = null;
+		ResultSet resultado = null;
+		Contato contato = null;
+
+		String sql = "select * from contato where codigo = ?";
+
+		try {
+			consulta = conexao.prepareStatement(sql);
+			consulta.setInt(1, valor);
+			resultado = consulta.executeQuery();
+
+			if (resultado.next()) {
+				contato = new Contato();
+				contato.setCodigo(resultado.getInt("codigo"));
+				contato.setNome(resultado.getString("nome"));
+				contato.setTelefone(resultado.getString("telefone"));
+				contato.setEmail(resultado.getString("email"));
+				contato.setDataCadastro(resultado.getDate("dt_cad"));
+				contato.setObservacao(resultado.getString("obs"));
+			}
+		} catch (SQLException e) {
+			System.out.println("Erro ao buscar código do contato. Mensagem: "
+					+ e.getMessage());
+		} finally {
+			try {
+				consulta.close();
+				resultado.close();
+				conexao.close();
+			} catch (Throwable e) {
+				System.out
+						.println("Erro ao fechar operações de consulta. Mensagem: "
+								+ e.getMessage());
+			}
+		}
+		return contato;
+
+}
 	public Connection geraConexao() {
-		return null;}
+		Connection conexao = null;
+		try {
+			String url = "jdbc:mysql://localhost/agenda?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC";
+			String usuario = "root";
+			String senha = "Rcgc,75bl3apt104";
+			conexao = DriverManager.getConnection(url, usuario, senha);
+		}
+		catch(SQLException e) {
+			System.out.println("Ocorreu um erro ao criar a conexão com o banco de dados. Erro: " + e.getMessage() + ".");
+		}
+		return conexao;}
 	public static void main(String[] args) {
 		ContatoCrudJDBC contatoCRUDJDBC = new ContatoCrudJDBC();
+		int tot_cadastrado = 0;
 		// criando um primeiro contato
 		Contato beltrano = new Contato();
 		beltrano.setNome("Beltrano Solar");
@@ -88,6 +187,7 @@ public class ContatoCrudJDBC {
 		beltrano.setDataCadastro(new Date(System.currentTimeMillis()));
 		beltrano.setObservacao("Novo contato - possível cliente.");
 		contatoCRUDJDBC.salvar(beltrano);
+		tot_cadastrado++;
 		// criando um segundo contato
 		Contato fulano = new Contato();
 		fulano.setNome("Fulano Lunar");
@@ -95,7 +195,10 @@ public class ContatoCrudJDBC {
 		fulano.setEmail("fulano@teste.com.br");
 		fulano.setDataCadastro(new Date(System.currentTimeMillis()));
 		fulano.setObservacao("Novo contato - possível cliente.");
+		contatoCRUDJDBC.salvar(fulano);
+		tot_cadastrado++;
 		// mensagem final
-		System.out.println("Contatos cadastrados: " + contatoCRUDJDBC.listar().size());
+		System.out.println("Contatos cadastrados: " + tot_cadastrado);
+		System.out.println("Contatos de contatos na agenda: " + contatoCRUDJDBC.listar().size());
 	}
 }
